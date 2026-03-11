@@ -1,0 +1,39 @@
+# ── Core ──────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# ── Database ──────────────────────────────────────
+motor==3.6.0            # Async MongoDB driver
+pymongo==4.9.2
+redis==5.1.1
+
+# ── Task Queue ────────────────────────────────────
+celery==5.4.0
+celery[redis]==5.4.0
+
+# ── AI / LLM ──────────────────────────────────────
+openai==1.51.0
+
+# ── Image Processing ──────────────────────────────
+Pillow==10.4.0
+
+# ── HTTP Client ───────────────────────────────────
+httpx==0.27.2
+
+# ── Trend Sources ─────────────────────────────────
+pytrends==4.9.2
+feedparser==6.0.11      # RSS feeds
+
+# ── Security ──────────────────────────────────────
+cryptography==43.0.1
+
+# ── Logging ───────────────────────────────────────
+structlog==24.4.0
+
+# ── Storage ───────────────────────────────────────
+boto3==1.35.0           # S3 / MinIO compatible
+
+# ── Utilities ─────────────────────────────────────
+python-dotenv==1.0.1
