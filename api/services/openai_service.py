@@ -136,7 +136,7 @@ async def generate_image_dalle(prompt: str, size: str = "1024x1024") -> Optional
     """
     try:
         response = client.images.generate(
-            model="dalle-3",
+            model="dall-e-3",
             prompt=prompt,
             size=size,
             n=1,
