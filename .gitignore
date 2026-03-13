@@ -26,9 +26,9 @@ wheels/
 # Docker
 *.log
 
-# Environment
-.env
-*.env.local
+# Environment (comentado para poder clonar en otra PC)
+# .env
+# *.env.local
 
 # IDE
 .vscode/
@@ -41,11 +41,11 @@ wheels/
 .DS_Store
 Thumbs.db
 
-# Generated files
-generated_images/
-mock_posts/
+# Generated files (incluidos para clonar en otra PC)
+# generated_images/
+# mock_posts/
 *.html
-workspace.json
+# workspace.json
 
 # Node
 node_modules/

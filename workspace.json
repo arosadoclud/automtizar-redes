@@ -1,0 +1,8 @@
+{
+  "name": "Mi Marca de Salud",
+  "slug": "mi-marca-salud",
+  "niches": ["salud_natural", "suplementos", "bienestar"],
+  "mode": "human_review",
+  "review_timeout_hours": 4,
+  "daily_post_goal": 3
+}
