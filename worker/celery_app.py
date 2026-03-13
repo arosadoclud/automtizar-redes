@@ -16,35 +16,53 @@ celery_app.conf.update(
     timezone="America/Santo_Domingo",  # RD timezone
     enable_utc=False,
     beat_schedule={
-        # Trend scan diario a las 6:00 AM
-        "daily-trend-scan": {
-            "task": "worker.tasks.daily_tasks.daily_trend_scan",
-            "schedule": crontab(hour=6, minute=0),
-        },
-        # Generación de contenido diario a las 7:00 AM
+        # ─── Generación masiva de contenido a las 7:00 AM ───────────
+        # Genera los 7 posts del día de una sola vez
         "daily-content-generation": {
             "task": "worker.tasks.daily_tasks.daily_content_generation",
             "schedule": crontab(hour=7, minute=0),
         },
-        # Publicación a las 9:00 AM
-        "morning-publish": {
-            "task": "worker.tasks.daily_tasks.publish_scheduled_posts",
-            "schedule": crontab(hour=9, minute=0),
+
+        # ─── 7 publicaciones diarias ─────────────────────────────────
+        "publish-8am": {
+            "task": "worker.tasks.daily_tasks.publish_next_post",
+            "schedule": crontab(hour=8, minute=0),
         },
-        # Publicación a las 12:00 PM (mediodía)
-        "noon-publish": {
-            "task": "worker.tasks.daily_tasks.publish_scheduled_posts",
+        "publish-10am": {
+            "task": "worker.tasks.daily_tasks.publish_next_post",
+            "schedule": crontab(hour=10, minute=0),
+        },
+        "publish-12pm": {
+            "task": "worker.tasks.daily_tasks.publish_next_post",
             "schedule": crontab(hour=12, minute=0),
         },
-        # Publicación a las 6:00 PM
-        "evening-publish": {
-            "task": "worker.tasks.daily_tasks.publish_scheduled_posts",
+        "publish-2pm": {
+            "task": "worker.tasks.daily_tasks.publish_next_post",
+            "schedule": crontab(hour=14, minute=0),
+        },
+        "publish-4pm": {
+            "task": "worker.tasks.daily_tasks.publish_next_post",
+            "schedule": crontab(hour=16, minute=0),
+        },
+        "publish-6pm": {
+            "task": "worker.tasks.daily_tasks.publish_next_post",
             "schedule": crontab(hour=18, minute=0),
         },
-        # Recolección de métricas cada 6 horas
+        "publish-9pm": {
+            "task": "worker.tasks.daily_tasks.publish_next_post",
+            "schedule": crontab(hour=21, minute=0),
+        },
+
+        # ─── Recolección de métricas cada 6 horas ───────────────────
         "metrics-collection": {
             "task": "worker.tasks.daily_tasks.collect_metrics",
             "schedule": crontab(hour="*/6", minute=0),
+        },
+
+        # ─── Responder mensajes pendientes cada 5 minutos ───────────
+        "process-messages": {
+            "task": "worker.tasks.daily_tasks.process_pending_messages",
+            "schedule": crontab(minute="*/5"),
         },
     },
 )

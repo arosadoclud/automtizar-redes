@@ -6,9 +6,11 @@ Sistema completo de automatización de contenido para Instagram y Facebook con I
 
 - 🤖 **Generación automática con GPT-4o**: Crea contenido profesional, educativo y viral
 - 🎨 **Imágenes con DALL-E 3**: Genera imágenes únicas para cada post
+- � **Publicación directa**: Integración con Facebook e Instagram Graph API
 - 📅 **Scheduler automático**: Publica posts en horarios óptimos (9AM, 12PM, 6PM)
 - ✅ **Sistema de aprobación**: Review gate para control de calidad
 - 📊 **Dashboard React**: Interfaz visual para gestionar contenido
+- 📈 **Recolección de métricas**: Automática cada 6 horas (likes, comments, reach)
 - 🗄️ **MongoDB + Redis**: Almacenamiento y cache de alta performance
 - 🔄 **Celery Beat**: Automatización de tareas programadas
 - 🐳 **Docker**: Deploy fácil con docker-compose
@@ -45,15 +47,25 @@ Sistema completo de automatización de contenido para Instagram y Facebook con I
 
 ### 1. Configurar Variables de Entorno
 
-Crea un archivo `.env` (ya existe en el proyecto):
+Crea un archivo `.env` (copia desde `.env.example`):
 
 ```env
+# OpenAI API
 OPENAI_API_KEY=tu_api_key_aqui
 USE_DALLE=true
-PUBLISHER_MODE=mock
+
+# Social Media (opcional - para publicación real)
+FACEBOOK_PAGE_ID=tu_facebook_page_id
+FACEBOOK_ACCESS_TOKEN=tu_facebook_token
+INSTAGRAM_BUSINESS_ACCOUNT_ID=tu_instagram_id
+INSTAGRAM_ACCESS_TOKEN=tu_instagram_token
+
+# Database
 MONGO_URL=mongodb://mongo:27017
 REDIS_URL=redis://redis:6379/0
 ```
+
+**📱 Para configurar Facebook/Instagram**, sigue la guía: [SETUP_META.md](SETUP_META.md)
 
 ### 2. Levantar Backend con Docker
 
@@ -108,7 +120,11 @@ curl http://localhost:8000/api/content/WORKSPACE_ID/queue
 ### Aprobar un Post
 
 ```bash
+# Aprobar sin publicar
 curl -X POST http://localhost:8000/api/content/WORKSPACE_ID/posts/POST_ID/approve
+
+# Aprobar y publicar inmediatamente en FB e IG
+curl -X POST "http://localhost:8000/api/content/WORKSPACE_ID/posts/POST_ID/approve?publish_now=true"
 ```
 
 ## 📅 Automatización Programada
@@ -117,10 +133,12 @@ El sistema ejecuta automáticamente:
 
 - **06:00 AM**: Escaneo de tendencias
 - **07:00 AM**: Generación de contenido del día
-- **09:00 AM**: Publicación matutina
-- **12:00 PM**: Publicación mediodía
-- **06:00 PM**: Publicación vespertina
-- **Cada 6h**: Recolección de métricas
+- **09:00 AM**: Publicación matutina en FB e IG
+- **12:00 PM**: Publicación mediodía en FB e IG
+- **06:00 PM**: Publicación vespertina en FB e IG
+- **Cada 6h**: Recolección de métricas (likes, comments, shares, reach)
+
+Los posts aprobados se publican automáticamente en los horarios configurados.
 
 ## 🛠️ Stack Tecnológico
 
@@ -149,17 +167,21 @@ El sistema ejecuta automáticamente:
 │   │   ├── workspaces.py    # CRUD workspaces
 │   │   └── content.py       # Generación y gestión de contenido
 │   └── services/
-│       └── openai_service.py # Integración GPT-4o + DALL-E
+│       ├── openai_service.py    # Integración GPT-4o + DALL-E
+│       └── meta_publisher.py    # Publicación FB/IG + métricas
 ├── worker/
 │   ├── celery_app.py        # Configuración Celery + schedules
 │   └── tasks/
 │       └── daily_tasks.py   # Tareas automatizadas
+├── scripts/
+│   └── get_meta_tokens.py   # Script para obtener tokens de Meta
 ├── docker/
 │   ├── Dockerfile.api       # Dockerfile para API
 │   └── Dockerfile.worker    # Dockerfile para workers
 ├── docker-compose.yml       # Orquestación de servicios
 ├── requirements.txt         # Dependencias Python
-└── README.md               # Este archivo
+├── README.md               # Este archivo
+└── SETUP_META.md           # Guía de configuración FB/IG
 ```
 
 ## 💰 Costos de API
@@ -193,11 +215,14 @@ Para usar DALL-E 3 necesitas:
 
 ## 📝 Roadmap
 
-- [ ] Integración con Facebook/Instagram Graph API
-- [ ] Sistema de métricas en tiempo real
-- [ ] Telegram Bot para review gate
-- [ ] Dashboard analytics avanzado
-- [ ] Multi-idioma support
+- [x] Integración con Facebook/Instagram Graph API ✅
+- [x] Recolección automática de métricas ✅
+- [ ] Telegram Bot para notificaciones de review gate
+- [ ] Dashboard analytics avanzado con gráficos en tiempo real
+- [ ] Multi-idioma support (ES/EN/PT)
+- [ ] A/B testing de contenido
+- [ ] Detección automática de hashtags trending
+- [ ] Análisis de competidores
 - [ ] A/B testing de contenido
 
 ## 📄 Licencia

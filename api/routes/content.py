@@ -7,6 +7,7 @@ import json
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from api.services.openai_service import generate_post_content, generate_image_dalle, download_image
+from api.services.meta_publisher import meta_publisher
 
 router = APIRouter()
 
@@ -95,8 +96,8 @@ async def get_post_queue(workspace_id: str):
     return posts
 
 @router.post("/{workspace_id}/posts/{post_id}/approve")
-async def approve_post(workspace_id: str, post_id: str):
-    """Aprobar un post"""
+async def approve_post(workspace_id: str, post_id: str, publish_now: bool = Query(False, description="Publicar inmediatamente")):
+    """Aprobar un post y opcionalmente publicarlo"""
     try:
         result = await db.posts.update_one(
             {"_id": ObjectId(post_id), "workspace_id": workspace_id},
@@ -154,7 +155,45 @@ async def approve_post(workspace_id: str, post_id: str):
     with open(html_file, "w", encoding="utf-8") as f:
         f.write(html_content)
     
-    return {"status": "approved", "mock_files": {"json": mock_file, "html": html_file}}
+    response_data = {
+        "status": "approved", 
+        "mock_files": {"json": mock_file, "html": html_file}
+    }
+    
+    # 📱 Publicar en redes sociales si se solicita
+    if publish_now:
+        try:
+            text = post["content"]["text"]
+            hashtags = post["content"].get("hashtags", [])
+            image_path = post["content"].get("image_local_path")
+            
+            # Publicar en Facebook e Instagram
+            publish_result = await meta_publisher.publish_to_both(
+                text=text,
+                image_path=image_path,
+                hashtags=hashtags
+            )
+            
+            # Actualizar post con resultados de publicación
+            await db.posts.update_one(
+                {"_id": ObjectId(post_id)},
+                {
+                    "$set": {
+                        "published": True,
+                        "published_at": datetime.utcnow().isoformat(),
+                        "publish_results": publish_result
+                    }
+                }
+            )
+            
+            response_data["published"] = True
+            response_data["publish_results"] = publish_result
+            
+        except Exception as e:
+            response_data["publish_error"] = str(e)
+            response_data["published"] = False
+    
+    return response_data
 
 @router.post("/{workspace_id}/posts/{post_id}/reject")
 async def reject_post(workspace_id: str, post_id: str):
