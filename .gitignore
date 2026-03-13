@@ -26,9 +26,9 @@ wheels/
 # Docker
 *.log
 
-# Environment (comentado para poder clonar en otra PC)
-# .env
-# *.env.local
+# Environment (nunca subir al repo - contiene claves secretas)
+.env
+*.env.local
 
 # IDE
 .vscode/

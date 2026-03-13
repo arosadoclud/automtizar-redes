@@ -25,6 +25,8 @@ services:
       dockerfile: docker/Dockerfile.worker
     command: celery -A worker.celery_app worker --loglevel=info --concurrency=2
     env_file: .env
+    environment:
+      - PYTHONPATH=/app
     depends_on:
       - mongo
       - redis
@@ -40,6 +42,8 @@ services:
       dockerfile: docker/Dockerfile.worker
     command: celery -A worker.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
     env_file: .env
+    environment:
+      - PYTHONPATH=/app
     depends_on:
       - mongo
       - redis

@@ -7,6 +7,7 @@ celery_app = Celery(
     "social_automation",
     broker=os.getenv("REDIS_URL", "redis://redis:6379/0"),
     backend=os.getenv("REDIS_URL", "redis://redis:6379/0"),
+    include=["worker.tasks.daily_tasks"],
 )
 
 celery_app.conf.update(
