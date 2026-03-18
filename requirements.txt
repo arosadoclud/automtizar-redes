@@ -26,6 +26,12 @@ httpx==0.27.2
 pytrends==4.9.2
 feedparser==6.0.11      # RSS feeds
 
+# ── Authentication ────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.9
+
 # ── Security ──────────────────────────────────────
 cryptography==43.0.1
 

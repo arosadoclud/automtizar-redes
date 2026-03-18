@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from api.services.openai_service import generate_post_content, generate_image_dalle, download_image
 from api.services.meta_publisher import meta_publisher
+from api.services.video_service import video_service
 
 router = APIRouter()
 
@@ -54,21 +55,29 @@ async def generate_post(workspace_id: str, topic: str = Query(..., description="
     use_dalle = os.getenv("USE_DALLE", "true").lower() == "true"
     if use_dalle and post_content.get("image_prompt"):
         try:
-            image_url = await generate_image_dalle(post_content["image_prompt"])
-            
-            if image_url:
-                # Descargar y guardar localmente
-                os.makedirs("generated_images", exist_ok=True)
-                timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-                image_filename = f"post_{timestamp}.png"
-                image_local_path = f"generated_images/{image_filename}"
-                
-                await download_image(image_url, image_local_path)
-                post_content["image_url"] = image_url
-                post_content["image_local_path"] = image_local_path
+            result_path = await generate_image_dalle(post_content["image_prompt"])
+
+            if result_path:
+                if result_path.startswith("/") or result_path.startswith("generated_images"):
+                    # gpt-image-1: ya está guardado en disco como archivo local
+                    image_local_path = result_path
+                    image_url = None
+                    post_content["image_local_path"] = image_local_path
+                    post_content["image_url"] = None
+                    post_content["image_tier_used"] = "gpt-image-1"
+                else:
+                    # dall-e-3 fallback: devuelve URL, descargamos
+                    image_url = result_path
+                    os.makedirs("generated_images", exist_ok=True)
+                    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    image_filename = f"post_{timestamp}.png"
+                    image_local_path = f"generated_images/{image_filename}"
+                    await download_image(image_url, image_local_path)
+                    post_content["image_url"] = image_url
+                    post_content["image_local_path"] = image_local_path
+                    post_content["image_tier_used"] = "dalle"
         except Exception as e:
-            print(f"Warning: Could not generate image with DALL-E: {e}")
-            # Continuar sin imagen
+            print(f"Warning: Could not generate image: {e}")
     
     # Guardar en la base de datos
     post_doc = {
@@ -94,6 +103,48 @@ async def get_post_queue(workspace_id: str):
         post["id"] = str(post.pop("_id"))
         posts.append(post)
     return posts
+
+class ManualPostCreate(BaseModel):
+    topic: Optional[str] = "Post manual"
+    text: str
+    cta: Optional[str] = ""
+    hashtags: Optional[List[str]] = []
+    platforms: Optional[List[str]] = ["facebook", "instagram"]
+    scheduled_at: Optional[str] = None
+
+@router.post("/{workspace_id}/posts/manual")
+async def create_manual_post(workspace_id: str, data: ManualPostCreate):
+    """Crear un post manualmente sin usar IA"""
+    try:
+        workspace = await db.workspaces.find_one({"_id": ObjectId(workspace_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid workspace ID")
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    post_doc = {
+        "workspace_id": workspace_id,
+        "topic": data.topic or "Post manual",
+        "content": {
+            "text": data.text,
+            "hashtags": data.hashtags,
+            "cta": data.cta,
+            "image_url": None,
+            "image_local_path": None,
+            "image_tier_used": "manual",
+        },
+        "status": "pending_review",
+        "platforms": data.platforms,
+        "scheduled_at": data.scheduled_at,
+        "source": "manual",
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    result = await db.posts.insert_one(post_doc)
+    post_doc["id"] = str(result.inserted_id)
+    post_doc.pop("_id", None)
+    return post_doc
 
 @router.post("/{workspace_id}/posts/{post_id}/approve")
 async def approve_post(workspace_id: str, post_id: str, publish_now: bool = Query(False, description="Publicar inmediatamente")):
@@ -167,9 +218,12 @@ async def approve_post(workspace_id: str, post_id: str, publish_now: bool = Quer
             hashtags = post["content"].get("hashtags", [])
             image_path = post["content"].get("image_local_path")
             
+            image_url = post["content"].get("image_url")
+
             # Publicar en Facebook e Instagram
             publish_result = await meta_publisher.publish_to_both(
                 text=text,
+                image_url=image_url,
                 image_path=image_path,
                 hashtags=hashtags
             )
@@ -210,3 +264,119 @@ async def reject_post(workspace_id: str, post_id: str):
         raise HTTPException(status_code=404, detail="Post not found")
     
     return {"status": "rejected"}
+
+
+class UpdatePostBody(BaseModel):
+    topic: Optional[str] = None
+    text: Optional[str] = None
+    hashtags: Optional[List[str]] = None
+    cta: Optional[str] = None
+
+
+@router.put("/{workspace_id}/posts/{post_id}")
+async def update_post(workspace_id: str, post_id: str, body: UpdatePostBody):
+    """Editar el contenido de un post existente"""
+    try:
+        post = await db.posts.find_one({"_id": ObjectId(post_id), "workspace_id": workspace_id})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post ID")
+
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    set_fields: Dict[str, Any] = {"updated_at": datetime.utcnow().isoformat()}
+
+    if body.topic is not None:
+        set_fields["topic"] = body.topic
+
+    # Merge inside the content sub-document
+    content_updates: Dict[str, Any] = {}
+    if body.text is not None:
+        content_updates["content.text"] = body.text
+    if body.hashtags is not None:
+        content_updates["content.hashtags"] = body.hashtags
+    if body.cta is not None:
+        content_updates["content.cta"] = body.cta
+
+    set_fields.update(content_updates)
+
+    await db.posts.update_one({"_id": ObjectId(post_id)}, {"$set": set_fields})
+
+    updated = await db.posts.find_one({"_id": ObjectId(post_id)})
+    updated["id"] = str(updated.pop("_id"))
+    return updated
+
+
+@router.delete("/{workspace_id}/posts/{post_id}")
+async def delete_post(workspace_id: str, post_id: str):
+    """Eliminar un post permanentemente"""
+    try:
+        result = await db.posts.delete_one({"_id": ObjectId(post_id), "workspace_id": workspace_id})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post ID")
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    return {"deleted": True}
+
+
+@router.post("/{workspace_id}/posts/{post_id}/generate-video")
+async def generate_video_for_post(
+    workspace_id: str,
+    post_id: str,
+    publish: bool = Query(False, description="Publicar como Reel tras generar"),
+    duration: int = Query(5, description="Duración del video en segundos (5 o 10)"),
+):
+    """
+    Genera un video corto (Reel) a partir de la imagen del post usando RunwayML,
+    y opcionalmente lo publica en Facebook e Instagram como Reel.
+    """
+    try:
+        post = await db.posts.find_one({"_id": ObjectId(post_id), "workspace_id": workspace_id})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid post ID")
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    image_path = post.get("content", {}).get("image_local_path")
+    image_url  = post.get("content", {}).get("image_url")
+    topic      = post.get("topic", "wellness")
+    text       = post.get("content", {}).get("text", "")
+    hashtags   = post.get("content", {}).get("hashtags", [])
+
+    # Generar video con RunwayML
+    video_result = await video_service.generate_from_image(
+        image_url=image_url,
+        image_path=image_path,
+        prompt_text=f"Gentle cinematic zoom in, warm soft lighting, premium wellness product feel for {topic}",
+        duration=duration,
+    )
+
+    if not video_result.get("success"):
+        raise HTTPException(status_code=502, detail=f"Video generation failed: {video_result.get('error')}")
+
+    video_url = video_result["video_url"]
+
+    # Guardar URL del video en el post
+    await db.posts.update_one(
+        {"_id": ObjectId(post_id)},
+        {"$set": {"content.video_url": video_url, "video_generated_at": datetime.utcnow().isoformat()}}
+    )
+
+    response = {"video_url": video_url, "published": False, "publish_results": None}
+
+    if publish:
+        reel_result = await meta_publisher.publish_reel_to_both(
+            video_url=video_url,
+            caption=text,
+            hashtags=hashtags,
+        )
+        await db.posts.update_one(
+            {"_id": ObjectId(post_id)},
+            {"$set": {"reel_publish_results": reel_result, "reel_published_at": datetime.utcnow().isoformat()}}
+        )
+        response["published"] = True
+        response["publish_results"] = reel_result
+
+    return response

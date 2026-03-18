@@ -2,6 +2,17 @@ version: "3.9"
 
 services:
 
+  # ── Frontend (React + Nginx) ──────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
   # ── API ───────────────────────────────────────────
   api:
     build:
@@ -10,6 +21,9 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    environment:
+      - PYTHONPATH=/app
+      - CORS_ORIGINS=http://localhost,http://localhost:80
     depends_on:
       - mongo
       - redis
@@ -61,16 +75,13 @@ services:
   # ── Redis ─────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     restart: unless-stopped
 
   # ── MinIO (Storage de imágenes) ───────────────────
   minio:
     image: minio/minio:latest
     ports:
-      - "9000:9000"
-      - "9001:9001"     # Console web
+      - "9001:9001"     # Console web only (internal bucket access)
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -82,3 +93,4 @@ services:
 volumes:
   mongo_data:
   minio_data:
+

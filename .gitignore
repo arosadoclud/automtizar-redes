@@ -41,9 +41,9 @@ wheels/
 .DS_Store
 Thumbs.db
 
-# Generated files (incluidos para clonar en otra PC)
-# generated_images/
-# mock_posts/
+# Generated files
+generated_images/
+*.bak
 *.html
 # workspace.json
 

@@ -65,6 +65,12 @@ celery_app.conf.update(
             "task": "worker.tasks.daily_tasks.process_pending_messages",
             "schedule": crontab(minute="*/5"),
         },
+
+        # ─── Verificar y auto-renovar Page Token cada lunes 6:30 AM ─
+        "weekly-token-check": {
+            "task": "worker.tasks.daily_tasks.verify_and_refresh_token",
+            "schedule": crontab(hour=6, minute=30, day_of_week=1),
+        },
     },
 )
 

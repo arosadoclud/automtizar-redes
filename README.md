@@ -1,239 +1,121 @@
-# 🚀 Sistema de Automatización para Redes Sociales
+# VitaGloss Social Hub 🌿
 
-Sistema completo de automatización de contenido para Instagram y Facebook con IA (GPT-4o + DALL-E 3), gestión de contenido, y flujo de aprobación.
+Panel de automatización de redes sociales para el equipo de ventas de VitaGloss RD.
 
-## ✨ Características
-
-- 🤖 **Generación automática con GPT-4o**: Crea contenido profesional, educativo y viral
-- 🎨 **Imágenes con DALL-E 3**: Genera imágenes únicas para cada post
-- � **Publicación directa**: Integración con Facebook e Instagram Graph API
-- 📅 **Scheduler automático**: Publica posts en horarios óptimos (9AM, 12PM, 6PM)
-- ✅ **Sistema de aprobación**: Review gate para control de calidad
-- 📊 **Dashboard React**: Interfaz visual para gestionar contenido
-- 📈 **Recolección de métricas**: Automática cada 6 horas (likes, comments, reach)
-- 🗄️ **MongoDB + Redis**: Almacenamiento y cache de alta performance
-- 🔄 **Celery Beat**: Automatización de tareas programadas
-- 🐳 **Docker**: Deploy fácil con docker-compose
-
-## 🏗️ Arquitectura
-
-```
-┌─────────────────┐
-│  Dashboard      │  React (localhost:3000)
-│  (React)        │
-└────────┬────────┘
-         │
-         v
-┌─────────────────┐
-│  Backend API    │  FastAPI (localhost:8000)
-│  (FastAPI)      │
-└────────┬────────┘
-         │
-    ┌────┴────┬────────────┐
-    v         v            v
-┌────────┐ ┌─────────┐ ┌──────────┐
-│MongoDB │ │ Redis   │ │ Celery   │
-│        │ │         │ │ Workers  │
-└────────┘ └─────────┘ └──────────┘
-```
-
-## 🚀 Inicio Rápido
-
-### Requisitos Previos
-
-- Docker Desktop instalado
-- Node.js v16+ (para el dashboard)
-- OpenAI API Key
-
-### 1. Configurar Variables de Entorno
-
-Crea un archivo `.env` (copia desde `.env.example`):
-
-```env
-# OpenAI API
-OPENAI_API_KEY=tu_api_key_aqui
-USE_DALLE=true
-
-# Social Media (opcional - para publicación real)
-FACEBOOK_PAGE_ID=tu_facebook_page_id
-FACEBOOK_ACCESS_TOKEN=tu_facebook_token
-INSTAGRAM_BUSINESS_ACCOUNT_ID=tu_instagram_id
-INSTAGRAM_ACCESS_TOKEN=tu_instagram_token
-
-# Database
-MONGO_URL=mongodb://mongo:27017
-REDIS_URL=redis://redis:6379/0
-```
-
-**📱 Para configurar Facebook/Instagram**, sigue la guía: [SETUP_META.md](SETUP_META.md)
-
-### 2. Levantar Backend con Docker
-
-```bash
-docker-compose up -d
-```
-
-Servicios disponibles:
-- API: http://localhost:8000
-- MongoDB: localhost:27017
-- Redis: localhost:6379
-- MinIO: http://localhost:9001
-
-### 3. Levantar Dashboard React
-
-```bash
-cd ../social-dashboard
-npm install
-npm start
-```
-
-Dashboard: http://localhost:3000
-
-## 📋 Uso
-
-### Crear un Workspace
-
-```bash
-curl -X POST http://localhost:8000/api/workspaces/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Mi Marca de Salud",
-    "slug": "mi-marca-salud",
-    "niches": ["salud_natural", "suplementos", "bienestar"],
-    "mode": "human_review",
-    "daily_post_goal": 3
-  }'
-```
-
-### Generar un Post
-
-```bash
-curl -X POST "http://localhost:8000/api/content/WORKSPACE_ID/generate?topic=beneficios+del+magnesio"
-```
-
-### Ver Cola de Posts
-
-```bash
-curl http://localhost:8000/api/content/WORKSPACE_ID/queue
-```
-
-### Aprobar un Post
-
-```bash
-# Aprobar sin publicar
-curl -X POST http://localhost:8000/api/content/WORKSPACE_ID/posts/POST_ID/approve
-
-# Aprobar y publicar inmediatamente en FB e IG
-curl -X POST "http://localhost:8000/api/content/WORKSPACE_ID/posts/POST_ID/approve?publish_now=true"
-```
-
-## 📅 Automatización Programada
-
-El sistema ejecuta automáticamente:
-
-- **06:00 AM**: Escaneo de tendencias
-- **07:00 AM**: Generación de contenido del día
-- **09:00 AM**: Publicación matutina en FB e IG
-- **12:00 PM**: Publicación mediodía en FB e IG
-- **06:00 PM**: Publicación vespertina en FB e IG
-- **Cada 6h**: Recolección de métricas (likes, comments, shares, reach)
-
-Los posts aprobados se publican automáticamente en los horarios configurados.
-
-## 🛠️ Stack Tecnológico
-
-### Backend
-- **FastAPI**: Framework web moderno y rápido
-- **MongoDB**: Base de datos NoSQL
-- **Redis**: Cache y message broker
-- **Celery**: Task queue para tareas asíncronas
-- **OpenAI API**: GPT-4o + DALL-E 3
-
-### Frontend
-- **React**: Librería UI
-- **Recharts**: Gráficos y visualizaciones
-
-### DevOps
-- **Docker**: Containerización
-- **Docker Compose**: Orquestación de servicios
-
-## 📁 Estructura del Proyecto
-
-```
-.
-├── api/
-│   ├── main.py              # Entry point de FastAPI
-│   ├── routes/              # Endpoints de la API
-│   │   ├── workspaces.py    # CRUD workspaces
-│   │   └── content.py       # Generación y gestión de contenido
-│   └── services/
-│       ├── openai_service.py    # Integración GPT-4o + DALL-E
-│       └── meta_publisher.py    # Publicación FB/IG + métricas
-├── worker/
-│   ├── celery_app.py        # Configuración Celery + schedules
-│   └── tasks/
-│       └── daily_tasks.py   # Tareas automatizadas
-├── scripts/
-│   └── get_meta_tokens.py   # Script para obtener tokens de Meta
-├── docker/
-│   ├── Dockerfile.api       # Dockerfile para API
-│   └── Dockerfile.worker    # Dockerfile para workers
-├── docker-compose.yml       # Orquestación de servicios
-├── requirements.txt         # Dependencias Python
-├── README.md               # Este archivo
-└── SETUP_META.md           # Guía de configuración FB/IG
-```
-
-## 💰 Costos de API
-
-- **GPT-4o**: ~$0.01-0.03 por post
-- **DALL-E 3**: ~$0.04 por imagen (1024x1024)
-
-**Nota**: Puedes desactivar DALL-E con `USE_DALLE=false` para testing sin consumir créditos.
-
-## ⚠️ Requisitos para DALL-E 3
-
-Para usar DALL-E 3 necesitas:
-1. Verificar tu organización en OpenAI: https://platform.openai.com/settings/organization/general
-2. Esperar ~15 minutos para que se propague el acceso
-
-## 🔐 Seguridad
-
-- ✅ El archivo `.env` está en `.gitignore`
-- ✅ Las API keys NO están en el código
-- ✅ MongoDB sin autenticación (solo para desarrollo local)
-
-**Para producción**: Habilita autenticación en MongoDB y Redis.
-
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crea una rama feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📝 Roadmap
-
-- [x] Integración con Facebook/Instagram Graph API ✅
-- [x] Recolección automática de métricas ✅
-- [ ] Telegram Bot para notificaciones de review gate
-- [ ] Dashboard analytics avanzado con gráficos en tiempo real
-- [ ] Multi-idioma support (ES/EN/PT)
-- [ ] A/B testing de contenido
-- [ ] Detección automática de hashtags trending
-- [ ] Análisis de competidores
-- [ ] A/B testing de contenido
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT.
-
-## 👤 Autor
-
-**Andy Rosado**
-- GitHub: [@arosadoclud](https://github.com/arosadoclud)
+Genera, revisa y publica contenido en **Facebook** e **Instagram** usando GPT-4o + DALL-E 3.
 
 ---
 
-⭐ Si te gusta este proyecto, dale una estrella en GitHub!
+## 🚀 Deploy rápido (equipo / servidor)
+
+### 1. Clonar el repositorio
+```bash
+git clone <url-del-repo>
+cd automatizar-redes-vitaglossrd
+```
+
+### 2. Configurar variables de entorno
+```bash
+cp .env.example .env
+# Editar .env con tus claves reales
+```
+
+### 3. Levantar todos los servicios
+```bash
+docker-compose up -d --build
+```
+
+El panel estará disponible en **http://TU_IP_O_DOMINIO**
+
+### 4. Crear el primer administrador
+```bash
+# Con Docker corriendo:
+docker-compose exec api python scripts/create_admin.py "Tu Nombre" admin@vitagloss.com TuContrasena123
+
+# O localmente:
+MONGO_URL=mongodb://localhost:27017 python scripts/create_admin.py "Tu Nombre" admin@vitagloss.com TuContrasena123
+```
+
+### 5. Agregar miembros del equipo
+El admin agrega usuarios desde el panel:
+**Configuracion → Equipo de trabajo → + Nuevo usuario**
+
+---
+
+## 🖥 Desarrollo local
+
+### Backend
+```bash
+docker-compose up mongo redis -d
+pip install -r requirements.txt
+uvicorn api.main:app --reload --port 8000
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev   # http://localhost:3000
+```
+
+---
+
+## 🏗 Arquitectura
+
+```
+frontend/          → React + Vite (Login + Dashboard)
+api/               → FastAPI (REST API con JWT auth)
+  routes/auth.py   → Login, usuarios, gestion de equipo
+  services/        → OpenAI, Meta Publisher, Auth JWT
+worker/            → Celery (tareas programadas)
+docker/            → Dockerfiles
+```
+
+### Servicios Docker
+| Servicio  | Puerto | Descripcion                   |
+|-----------|--------|-------------------------------|
+| frontend  | **80** | Panel web (Nginx + React)     |
+| api       | 8000   | FastAPI (interno)             |
+| mongo     | 27017  | Base de datos MongoDB         |
+| redis     | 6379   | Cola de tareas Celery         |
+| minio     | 9001   | Console de almacenamiento     |
+
+---
+
+## 🔐 Roles de usuario
+
+| Rol     | Permisos                                              |
+|---------|-------------------------------------------------------|
+| `admin` | Todo: crear/eliminar usuarios, workspaces, publicar  |
+| `agent` | Ver cola, aprobar/rechazar/publicar posts            |
+
+---
+
+## ⚙️ Variables de entorno criticas
+
+| Variable                      | Descripcion                       |
+|-------------------------------|-----------------------------------|
+| `OPENAI_API_KEY`              | GPT-4o + DALL-E 3                |
+| `META_PAGE_ACCESS_TOKEN`      | Token de Facebook Page            |
+| `META_PAGE_ID`                | ID de pagina de Facebook          |
+| `META_INSTAGRAM_ACCOUNT_ID`   | ID de cuenta Instagram Business   |
+| `JWT_SECRET_KEY`              | Clave JWT (cambiar en produccion) |
+| `CORS_ORIGINS`                | URL del frontend en produccion    |
+
+---
+
+## 🔄 Comandos utiles
+
+```bash
+# Ver logs en tiempo real
+docker-compose logs -f api
+
+# Reconstruir despues de cambios en codigo
+docker-compose up -d --build api worker
+
+# Reconstruir el frontend
+docker-compose up -d --build frontend
+
+# Backup de MongoDB
+docker-compose exec mongo mongodump --out /data/backup
+```
