@@ -100,7 +100,11 @@ def daily_content_generation():
 
                     if use_dalle and content.get("image_prompt") and item["content_type"] != "reel":
                         try:
-                            image_url = await generate_image_dalle(content["image_prompt"])
+                            image_url = await generate_image_dalle(
+                                prompt=content["image_prompt"],
+                                topic=item["topic"],
+                                content_text=content.get("text", "")
+                            )
                             if image_url:
                                 os.makedirs("generated_images", exist_ok=True)
                                 ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")

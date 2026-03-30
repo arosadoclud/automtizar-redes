@@ -62,7 +62,7 @@ CTA:
 [Call to action específico]
 
 IMAGE_PROMPT:
-[Write a gpt-image-1 prompt in English for a HYPERREALISTIC photograph indistinguishable from a real photo. STRICT RULES: (1) NO flat-lay on white/marble backgrounds. (2) NO perfectly arranged products. (3) Show the topic '{topic}' through a REAL LIFESTYLE MOMENT: a person actually eating healthy food, preparing a smoothie, exercising, or a supplement bottle casually placed in a real kitchen or living room environment. (4) Specify camera: 'Canon EOS R5, 50mm f/1.8'. (5) Describe real imperfect environment: real kitchen clutter, natural morning light from a window, lived-in home. (6) If a person appears: Latin American, specific age, real skin texture with pores, natural hair, genuine expression — not posing. (7) End with: 'Documentary photography style, Kodak Portra 400 color grade, no white studio background, no product arrangement, no AI-art look, no text in image'.]
+[Write a short description in English of what the image should show related to '{topic}'. Focus on the main subject/activity only (e.g., 'person preparing healthy smoothie', 'woman taking supplements', 'man doing yoga'). The system will add professional photography details. Keep it under 20 words.]
 ---"""
 
     try:
@@ -154,41 +154,194 @@ def parse_gpt_response(content: str) -> Dict[str, any]:
     return result
 
 
-async def generate_image_dalle(prompt: str, size: str = "1024x1024") -> Optional[str]:
+def create_dynamic_image_prompt(topic: str, content_text: str = "") -> str:
+    """
+    Crea un prompt de imagen hiperrealista ÚNICO y variado basado en el tema específico.
+    Evita repetición usando diferentes escenarios, ángulos, momentos y actividades.
+    """
+    import random
+    
+    # VARIACIONES DE PERSONAS
+    _ages = ["early 20s", "mid 20s", "late 20s", "early 30s", "mid 30s", "late 30s", "early 40s", "mid 40s"]
+    _ethnicities = ["Dominican", "Colombian", "Mexican", "Venezuelan", "Cuban", "Puerto Rican", "Peruvian", "Ecuadorian"]
+    _hair = [
+        "short natural curls", "long straight dark hair", "medium wavy chestnut hair",
+        "tight afro curls", "shoulder-length box braids", "pixie cut", "long loose curls", 
+        "straight bob haircut", "high bun with loose strands", "messy low ponytail", 
+        "half-up half-down style", "short tousled hair"
+    ]
+    _build = ["slim", "athletic", "average", "curvy", "petite", "muscular"]
+    _gender = random.choice(["woman", "man", "woman", "woman"])  # 75% mujeres
+    
+    # VARIACIONES DE CÁMARAS (hiperrealistas profesionales)
+    _cameras = [
+        "Canon EOS R5, 50mm f/1.8",
+        "Sony A7R V, 85mm f/2.0",
+        "Nikon Z9, 35mm f/1.4",
+        "Fujifilm X-T5, 56mm f/1.2",
+        "Canon EOS 5D Mark IV, 24-70mm f/2.8 at 50mm",
+        "Leica Q2, 28mm f/1.7"
+    ]
+    
+    # VARIACIONES DE LUZ Y MOMENTO DEL DÍA
+    _lighting = [
+        "early morning golden light through large window",
+        "soft diffused afternoon light, slightly overcast",
+        "warm sunset glow from window behind",
+        "bright midday natural light from glass door",
+        "gentle morning sunbeam across face and scene",
+        "late afternoon warm amber light",
+        "cool morning blue hour light",
+        "dappled sunlight through plants near window"
+    ]
+    
+    # VARIACIONES DE LOCACIÓN
+    _locations = [
+        "modern minimalist kitchen with marble counters",
+        "cozy wooden home kitchen with plants",
+        "bright living room with white walls and natural textures",
+        "home office with wooden desk and bookshelf",
+        "sunlit bedroom corner near window",
+        "open-plan living space with plants and warm tones",
+        "rustic kitchen with colorful tiles",
+        "contemporary apartment with large windows"
+    ]
+    
+    # VARIACIONES DE ACTIVIDADES/ESCENAS SEGÚN TEMA
+    topic_lower = topic.lower()
+    
+    # Detectar categoría del tema
+    if any(word in topic_lower for word in ["colágeno", "piel", "belleza", "juventud", "rostro", "arrugas"]):
+        _activities = [
+            "applying facial serum near a bathroom mirror with natural light",
+            "holding a collagen supplement bottle while looking satisfied in front of a mirror",
+            "touching her glowing cheek with fingertips, collagen bottle on vanity",
+            "examining skin in mirror with supplement bottle visible on counter",
+            "applying moisturizer from a jar, collagen capsules beside sink"
+        ]
+    elif any(word in topic_lower for word in ["energía", "energy", "vitamina", "magnesio", "zinc", "hierro"]):
+        _activities = [
+            "stretching arms overhead energetically in living room, supplement bottle on coffee table",
+            "tying running shoes with supplement bottle beside yoga mat",
+            "preparing energizing smoothie with greens, banana, supplement visible",
+            "standing at kitchen counter organizing morning vitamins with water glass",
+            "doing light stretches near window, supplement bottles on windowsill"
+        ]
+    elif any(word in topic_lower for word in ["sueño", "sleep", "melatonina", "descanso", "dormir"]):
+        _activities = [
+            "sitting on bed edge in pajamas holding supplement bottle, nightstand lamp on",
+            "reading a book in bed with tea and supplement on nightstand",
+            "relaxed on couch with eyes closed, holding mug, supplements nearby",
+            "preparing evening tea in kitchen, melatonin bottle on counter",
+            "doing gentle bedtime yoga stretches, supplements visible in background"
+        ]
+    elif any(word in topic_lower for word in ["omega", "corazón", "cardiovascular", "circulación"]):
+        _activities = [
+            "preparing salmon with avocado and nuts, omega supplement nearby",
+            "pouring omega capsules from bottle into hand at breakfast table",
+            "meal prep scene with fish, nuts, olive oil, supplement bottle visible",
+            "eating healthy lunch bowl with supplement bottle on table",
+            "standing at stove cooking healthy meal, supplements on counter"
+        ]
+    elif any(word in topic_lower for word in ["ejercicio", "fitness", "músculo", "proteína", "deporte"]):
+        _activities = [
+            "wiping sweat with towel after workout, protein shaker and supplements visible",
+            "preparing post-workout protein shake in kitchen, athletic clothes",
+            "doing bodyweight exercises at home, supplement bottles on floor nearby",
+            "measuring protein powder into shaker, gym bag in background",
+            "stretching on yoga mat with resistance bands, supplements visible"
+        ]
+    elif any(word in topic_lower for word in ["peso", "adelgazar", "quemar", "dieta", "metabolismo"]):
+        _activities = [
+            "preparing healthy meal with vegetables and lean protein, supplement nearby",
+            "measuring portions in kitchen with food scale, supplements visible",
+            "eating colorful salad bowl with supplement bottle on table",
+            "preparing green juice with fresh vegetables, supplement in frame",
+            "organizing meal prep containers, supplements lined up on counter"
+        ]
+    elif any(word in topic_lower for word in ["estrés", "ansiedad", "relax", "calma", "ashwagandha"]):
+        _activities = [
+            "meditating cross-legged on couch with eyes closed, supplement on side table",
+            "journaling at desk with tea and supplement bottle",
+            "doing deep breathing exercise near window, supplement visible",
+            "sitting peacefully with herbal tea, ashwagandha bottle on table",
+            "gentle yoga pose on mat at home, supplement bottles nearby"
+        ]
+    elif any(word in topic_lower for word in ["digestión", "probiótico", "intestino", "estómago"]):
+        _activities = [
+            "preparing yogurt bowl with fruits and nuts, probiotic supplement nearby",
+            "drinking kombucha or kefir with probiotic capsules on counter",
+            "eating fiber-rich meal with vegetables, supplement bottle visible",
+            "preparing fermented foods in kitchen, probiotics on counter",
+            "drinking green juice, digestive supplement bottle in frame"
+        ]
+    elif any(word in topic_lower for word in ["inmune", "defensas", "vitamina c", "resfriado"]):
+        _activities = [
+            "squeezing fresh oranges for juice, vitamin C supplement nearby",
+            "preparing immune-boosting smoothie with citrus and ginger",
+            "taking vitamin supplement with glass of water, fruits in background",
+            "cutting fresh vegetables for salad, immune supplements visible",
+            "drinking hot tea with lemon, vitamin bottles on table"
+        ]
+    else:
+        # Actividades generales de bienestar
+        _activities = [
+            "preparing healthy smoothie with fresh ingredients, supplement bottle visible",
+            "sitting at breakfast table with healthy meal and supplements",
+            "organizing daily vitamins on kitchen counter with water glass",
+            "reading wellness book with tea, supplement bottle nearby",
+            "preparing nutritious lunch, supplement visible on counter",
+            "hydrating with infused water, supplement bottle in scene",
+            "meal prepping healthy foods, supplements lined up",
+            "enjoying morning coffee ritual, vitamins on table"
+        ]
+    
+    # VARIACIONES DE ESTILO FOTOGRÁFICO
+    _styles = [
+        "Documentary lifestyle photography, Kodak Portra 400 color grade",
+        "Editorial wellness photography, Fujifilm Eterna cinema color",
+        "Natural lifestyle photography, Kodak Gold 200 warm tones",
+        "Authentic documentary style, Fujifilm Provia vibrant colors",
+        "Candid lifestyle photography, Kodak Ektar 100 vivid naturals",
+        "Real moment photography, Cinestill 800T color science"
+    ]
+    
+    # CONSTRUIR PROMPT ÚNICO
+    person = f"{random.choice(_ethnicities)} {_gender}, {random.choice(_ages)}, {random.choice(_build)} build, {random.choice(_hair)}"
+    camera = random.choice(_cameras)
+    lighting = random.choice(_lighting)
+    location = random.choice(_locations)
+    activity = random.choice(_activities)
+    style = random.choice(_styles)
+    
+    prompt = f"""HYPERREALISTIC PHOTOGRAPH — {camera}. 
+{person}. Real skin texture with visible pores, natural imperfections, genuine expression. 
+SCENE: {activity} in a {location}. {lighting}. 
+ENVIRONMENT: Real lived-in space with natural clutter — dishes, plants, books, everyday items visible in background. 
+Authentic moment, NOT posed for camera. Realistic depth of field, natural bokeh. 
+{style}. 
+CRITICAL: NO white studio background, NO symmetrical product arrangement, NO AI-generated plastic skin, 
+NO perfect lighting setup, NO text overlays. Must look like a real candid photograph taken in someone's home."""
+    
+    return prompt.strip()
+
+
+async def generate_image_dalle(prompt: str, size: str = "1024x1024", topic: str = "", content_text: str = "") -> Optional[str]:
     """
     Genera imagen usando gpt-image-1 (máxima calidad, hiperrealista).
-    Devuelve base64 → lo guardamos como archivo local y retornamos la URL servida.
-    Fallback automático a dall-e-3 si gpt-image-1 no está disponible.
+    Si prompt es genérico, genera uno dinámico basado en el tema.
     """
     import hashlib, time, base64, os, uuid, random
     from pathlib import Path
-
-    # ── variación de persona para evitar repetición entre imágenes ────────
-    _ages = [
-        "early 20s", "mid 20s", "late 20s",
-        "early 30s", "mid 30s", "late 30s",
-        "early 40s", "mid 40s",
-    ]
-    _ethnicities = [
-        "Dominican", "Colombian", "Mexican", "Venezuelan",
-        "Cuban", "Puerto Rican", "Peruvian", "Ecuadorian",
-    ]
-    _hair = [
-        "short natural curls", "long straight dark hair", "medium wavy chestnut hair",
-        "tight afro curls", "shoulder-length box braids", "pixie cut",
-        "long loose curls", "straight bob haircut", "high bun with loose strands",
-    ]
-    _build = ["slim", "athletic", "average", "curvy", "petite"]
-    _gender = random.choices(["woman", "man"], weights=[70, 30])[0]
-
-    person_variation = (
-        f"IMPORTANT — use a completely UNIQUE person: {random.choice(_ethnicities)} {_gender}, "
-        f"{random.choice(_ages)}, {random.choice(_build)} build, {random.choice(_hair)}. "
-        f"Different from any previously generated image. "
-    )
-
+    
+    # Si el prompt es muy corto o genérico, crear uno dinámico
+    if len(prompt) < 100 or "professional image" in prompt.lower():
+        prompt = create_dynamic_image_prompt(topic, content_text)
+        print(f"✨ Prompt dinámico generado: {prompt[:100]}...")
+    
+    # Añadir semilla única para evitar caché
     unique_seed = hashlib.sha1(f"{prompt}{time.time()}".encode()).hexdigest()[:8]
-    unique_prompt = f"{person_variation}{prompt.strip()} [uid:{unique_seed}]"
+    unique_prompt = f"{prompt.strip()} [uid:{unique_seed}]"
 
     # ── intento 1: gpt-image-1 (mejor calidad, sin style param) ──────────
     try:

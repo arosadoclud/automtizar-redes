@@ -55,7 +55,11 @@ async def generate_post(workspace_id: str, topic: str = Query(..., description="
     use_dalle = os.getenv("USE_DALLE", "true").lower() == "true"
     if use_dalle and post_content.get("image_prompt"):
         try:
-            result_path = await generate_image_dalle(post_content["image_prompt"])
+            result_path = await generate_image_dalle(
+                prompt=post_content["image_prompt"],
+                topic=topic,
+                content_text=post_content.get("text", "")
+            )
 
             if result_path:
                 if result_path.startswith("/") or result_path.startswith("generated_images"):

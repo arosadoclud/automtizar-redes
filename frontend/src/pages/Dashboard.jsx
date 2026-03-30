@@ -2254,6 +2254,11 @@ function CreatePostView({ workspace, toast }) {
   const [aiTone, setAiTone]         = useState("inspirador");
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiResult, setAiResult]     = useState(null);
+  // Auto mode state
+  const [autoGenerating, setAutoGenerating] = useState(false);
+  const [autoCount, setAutoCount]   = useState(1);
+  const [autoResults, setAutoResults] = useState([]);
+  const [autoLog, setAutoLog]       = useState([]);
 
   const previewText     = mode === "manual" ? mText : (aiResult?.content?.text || aiResult?.text || "");
   const previewHashtags = mode === "manual"
@@ -2287,6 +2292,30 @@ function CreatePostView({ workspace, toast }) {
     setSubmitting(false);
   };
 
+  const AUTO_TOPICS = [
+    "5 beneficios del magnesio que no conocías",
+    "Por qué el azúcar está destruyendo tu energía",
+    "Cómo mejorar tu sueño con suplementos naturales",
+    "Los 3 errores más comunes al hacer dieta",
+    "Alimentos que aceleran el metabolismo naturalmente",
+    "Por qué deberías tomar vitamina D todos los días",
+    "Cómo el estrés afecta tu peso corporal",
+    "5 señales de que tu cuerpo necesita más proteína",
+    "Omega-3: el suplemento que más necesitas",
+    "Cómo construir hábitos saludables que duren",
+    "El secreto para tener más energía durante el día",
+    "Por qué el colágeno es esencial después de los 30",
+    "Los mejores antioxidantes naturales para tu cuerpo",
+    "Cómo combatir la inflamación con alimentación",
+    "5 razones para emprender en salud y bienestar",
+    "Cómo el zinc fortalece tu sistema inmune",
+    "La diferencia entre grasa buena y grasa mala",
+    "Qué pasa en tu cuerpo cuando dejas el azúcar",
+    "Suplementos esenciales para deportistas",
+    "Cómo leer las etiquetas nutricionales correctamente",
+  ];
+  const AUTO_TONES = ["inspirador", "educativo", "urgente", "emocional", "divertido"];
+
   const handleAiGenerate = async () => {
     if (!aiTopic.trim()) { toast("Escribe un tema primero", "error"); return; }
     if (!workspace?.id) { toast("Selecciona un workspace primero", "error"); return; }
@@ -2296,6 +2325,28 @@ function CreatePostView({ workspace, toast }) {
     if (post) { setAiResult(post); toast("¡Post generado con IA! ✨", "success"); }
     else { toast("Error al generar el post. ¿Está configurada OPENAI_API_KEY?", "error"); }
     setAiGenerating(false);
+  };
+
+  const handleAutoGenerate = async () => {
+    if (!workspace?.id) { toast("Selecciona un workspace primero", "error"); return; }
+    setAutoGenerating(true); setAutoResults([]); setAutoLog([]);
+    const usedTopics = new Set();
+    let successCount = 0;
+    for (let i = 0; i < autoCount; i++) {
+      // Pick a random unique topic from pool
+      let available = AUTO_TOPICS.filter(t => !usedTopics.has(t));
+      if (available.length === 0) available = AUTO_TOPICS; // reset if exhausted
+      const topic = available[Math.floor(Math.random() * available.length)];
+      usedTopics.add(topic);
+      const tone = AUTO_TONES[Math.floor(Math.random() * AUTO_TONES.length)];
+      setAutoLog(prev => [...prev, { topic, tone, status: "generando" }]);
+      const post = await api.generateContent(workspace.id, topic);
+      const status = post ? "✅" : "❌";
+      setAutoLog(prev => prev.map((l, idx) => idx === i ? { ...l, status } : l));
+      if (post) { setAutoResults(prev => [...prev, post]); successCount++; }
+    }
+    setAutoGenerating(false);
+    toast(`🚀 ${successCount} post${successCount !== 1 ? "s" : ""} generados — ve a Cola de Revisión`, "success");
   };
 
   // Live preview panel (shared)
@@ -2349,6 +2400,9 @@ function CreatePostView({ workspace, toast }) {
         <button className={`mode-tab ${mode === "ai" ? "active" : ""}`} onClick={() => { setMode("ai"); setAiResult(null); }}>
           🤖 Generar con IA
         </button>
+        <button className={`mode-tab ${mode === "auto" ? "active" : ""}`} onClick={() => { setMode("auto"); setAutoResults([]); setAutoLog([]); }} style={mode !== "auto" ? { borderColor: "var(--amber)", color: "var(--amber)" } : {}  }>
+          🚀 Modo Automático
+        </button>
       </div>
 
       {/* Success banner */}
@@ -2363,10 +2417,105 @@ function CreatePostView({ workspace, toast }) {
         </div>
       )}
 
-      <div className="grid-2">
+      <div className={mode === "auto" ? "" : "grid-2"}>
         {/* LEFT: Form */}
         <div className="card">
-          {mode === "manual" ? (
+          {mode === "auto" ? (
+            <>
+              <div className="section-header" style={{ marginBottom: 20 }}>
+                <div>
+                  <div className="section-title">🚀 Modo Automático — La IA lo hace todo</div>
+                  <div className="section-sub">Elige cuántos posts quieres y la IA selecciona los temas, el tono y genera el contenido completo con imagen</div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
+                <div style={{ background: "var(--surface2)", borderRadius: "var(--radius-lg)", padding: 20, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>¿Cuántos posts generar?</div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {[1, 3, 5, 7, 10].map(n => (
+                      <button key={n} onClick={() => setAutoCount(n)}
+                        style={{
+                          padding: "10px 18px", borderRadius: "var(--radius)", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 15,
+                          background: autoCount === n ? "var(--cyan)" : "var(--surface3)",
+                          color: autoCount === n ? "#0f172a" : "var(--text-2)",
+                          transition: "all 0.15s",
+                        }}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ background: "var(--surface2)", borderRadius: "var(--radius-lg)", padding: 20, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>La IA seleccionará</div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {[
+                      { icon: "🎯", label: "Tema optimizado para engagement", sub: "de banco de 20+ temas virales" },
+                      { icon: "🎭", label: "Tono automático variado", sub: "inspirador, educativo, urgente..." },
+                      { icon: "🎨", label: "Imagen DALL-E 3 personalizada", sub: "prompt generado por GPT-4o" },
+                    ].map((f, i) => (
+                      <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                        <span style={{ fontSize: 16 }}>{f.icon}</span>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{f.label}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)" }}>{f.sub}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Topic bank preview */}
+              <div style={{ background: "var(--surface2)", borderRadius: "var(--radius-lg)", padding: 16, marginBottom: 24, border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 12, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 10 }}>Banco de temas (muestra aleatoria de la IA) 🎲</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {AUTO_TOPICS.slice(0, 8).map((t, i) => (
+                    <span key={i} style={{ background: "var(--surface3)", border: "1px solid var(--border2)", borderRadius: 20, padding: "4px 12px", fontSize: 11, color: "var(--text-2)" }}>{t}</span>
+                  ))}
+                  <span style={{ background: "var(--surface3)", border: "1px solid var(--border2)", borderRadius: 20, padding: "4px 12px", fontSize: 11, color: "var(--text-3)" }}>+{AUTO_TOPICS.length - 8} más...</span>
+                </div>
+              </div>
+
+              {/* Progress log */}
+              {(autoLog.length > 0 || autoGenerating) && (
+                <div style={{ background: "var(--surface2)", borderRadius: "var(--radius-lg)", padding: 16, marginBottom: 20, border: "1px solid var(--border)", maxHeight: 220, overflowY: "auto" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 10 }}>Progreso en tiempo real</div>
+                  {autoLog.map((l, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: i < autoLog.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <span style={{ fontSize: 14, width: 20 }}>{l.status === "generando" ? <span className="spinner" style={{ width: 14, height: 14 }} /> : l.status}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{l.topic}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)" }}>Tono: {l.tone}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Results summary */}
+              {!autoGenerating && autoResults.length > 0 && (
+                <div style={{ background: "var(--green-dim)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "var(--radius-lg)", padding: 16, marginBottom: 20 }}>
+                  <div style={{ fontWeight: 700, color: "var(--green)", marginBottom: 4 }}>🎉 {autoResults.length} posts generados exitosamente</div>
+                  <div style={{ fontSize: 12, color: "var(--text-2)" }}>Todos están en <strong>Cola de Revisión</strong> esperando tu aprobación. Revísalos uno por uno antes de publicar.</div>
+                </div>
+              )}
+
+              <button
+                className="btn btn-primary btn-lg w-full"
+                onClick={handleAutoGenerate}
+                disabled={autoGenerating}
+                style={{ background: autoGenerating ? undefined : "linear-gradient(135deg, var(--amber), #f97316)", fontSize: 16, padding: "16px 24px" }}
+              >
+                {autoGenerating
+                  ? <><span className="spinner" /> Generando {autoLog.filter(l => l.status === "✅").length} de {autoCount} posts...</>
+                  : `🚀 Generar ${autoCount} post${autoCount > 1 ? "s" : ""} automáticamente`
+                }
+              </button>
+              <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 8 }}>
+                La IA elige tema + tono + imagen por cada post. Todos irán a revisión antes de publicarse.
+              </div>
+            </>
+          ) : mode === "manual" ? (
             <>
               <div className="section-header">
                 <div>
@@ -2521,8 +2670,8 @@ function CreatePostView({ workspace, toast }) {
           )}
         </div>
 
-        {/* RIGHT: Preview */}
-        <div className="card">
+        {/* RIGHT: Preview (hidden in auto mode) */}
+        {mode !== "auto" && <div className="card">
           <div className="section-header">
             <div className="section-title">👁️ Vista previa en tiempo real</div>
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>Actualiza mientras escribes</span>
@@ -2549,7 +2698,7 @@ function CreatePostView({ workspace, toast }) {
               })()
             : <FbPreview text={previewText} hashtags={previewHashtags} cta={previewCta} />
           }
-        </div>
+        </div>}
       </div>
     </div>
   );
